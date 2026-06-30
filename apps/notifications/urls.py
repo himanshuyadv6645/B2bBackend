@@ -1,0 +1,18 @@
+from django.urls import path
+from apps.notifications.views.notification import (
+    NotificationListView,
+    NotificationDetailView,
+    MarkNotificationReadView,
+    MarkAllNotificationsReadView,
+    UnreadNotificationCountView,
+)
+
+app_name = 'notifications'
+
+urlpatterns = [
+    path('', NotificationListView.as_view(), name='notification-list'),
+    path('unread-count/', UnreadNotificationCountView.as_view(), name='unread-count'),
+    path('<uuid:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
+    path('<uuid:pk>/read/', MarkNotificationReadView.as_view(), name='mark-read'),
+    path('read-all/', MarkAllNotificationsReadView.as_view(), name='mark-all-read'),
+]

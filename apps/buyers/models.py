@@ -1,8 +1,8 @@
 import uuid
 from django.db import models
 from django.conf import settings
-from common.models import BaseModel
-from common.validators import validate_gstin, validate_pan, validate_phone, validate_pincode
+from backend.common.models import BaseModel
+from backend.common.validators import validate_gstin, validate_pan, validate_phone, validate_pincode
 
 
 class BuyerProfile(BaseModel):

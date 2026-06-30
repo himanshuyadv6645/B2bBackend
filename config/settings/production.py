@@ -1,10 +1,18 @@
 from .base import *
 import os
 import urllib.parse
+import socket
 
 DEBUG = False
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='*').split(',')
+
+def resolve_ipv4(host):
+    try:
+        result = socket.getaddrinfo(host, None, socket.AF_INET)
+        return result[0][4][0]
+    except (socket.gaierror, IndexError):
+        return host
 
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:
@@ -15,7 +23,7 @@ if DATABASE_URL:
             'NAME': url.path[1:].split('?')[0],
             'USER': url.username or '',
             'PASSWORD': url.password or '',
-            'HOST': url.hostname or '',
+            'HOST': resolve_ipv4(url.hostname) if url.hostname else '',
             'PORT': url.port or 5432,
             'CONN_MAX_AGE': 600,
             'OPTIONS': {
@@ -30,7 +38,7 @@ else:
             'NAME': config('DATABASE_NAME', default='postgres'),
             'USER': config('DATABASE_USER', default='postgres'),
             'PASSWORD': config('DATABASE_PASSWORD', default=''),
-            'HOST': config('DATABASE_HOST', default=''),
+            'HOST': resolve_ipv4(config('DATABASE_HOST', default='')),
             'PORT': config('DATABASE_PORT', default='5432'),
             'CONN_MAX_AGE': 600,
             'OPTIONS': {

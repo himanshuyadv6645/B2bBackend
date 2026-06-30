@@ -7,5 +7,6 @@ python-decouple==3.8
 Pillow==12.2.0
 cloudinary==1.44.2
 django-cloudinary-storage
+django-cors-headers
 psycopg2-binary
 gunicorn==23.0.0

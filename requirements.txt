@@ -10,3 +10,4 @@ django-cloudinary-storage
 django-cors-headers
 psycopg2-binary
 gunicorn==23.0.0
+whitenoise==6.8.2

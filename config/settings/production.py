@@ -1,54 +1,40 @@
 from .base import *
 import os
 import urllib.parse
-import socket
 
 DEBUG = False
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='*').split(',')
 
-def get_ipv4_addr(host):
-    try:
-        ip = socket.gethostbyname(host)
-        return ip
-    except socket.gaierror:
-        return host
-
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:
     url = urllib.parse.urlparse(DATABASE_URL)
-    host = url.hostname or ''
-    ipv4 = get_ipv4_addr(host)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': url.path[1:].split('?')[0],
             'USER': url.username or '',
             'PASSWORD': url.password or '',
-            'HOST': host,
+            'HOST': url.hostname or '',
             'PORT': url.port or 5432,
             'CONN_MAX_AGE': 600,
             'OPTIONS': {
                 'sslmode': 'require',
-                'hostaddr': ipv4,
             },
         }
     }
 else:
-    db_host = config('DATABASE_HOST', default='')
-    ipv4 = get_ipv4_addr(db_host)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': config('DATABASE_NAME', default='postgres'),
             'USER': config('DATABASE_USER', default='postgres'),
             'PASSWORD': config('DATABASE_PASSWORD', default=''),
-            'HOST': db_host,
+            'HOST': config('DATABASE_HOST', default=''),
             'PORT': config('DATABASE_PORT', default='5432'),
             'CONN_MAX_AGE': 600,
             'OPTIONS': {
                 'sslmode': 'require',
-                'hostaddr': ipv4,
             },
         }
     }

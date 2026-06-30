@@ -3,7 +3,7 @@ import os
 
 DEBUG = False
 
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='').split(',')
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='*').split(',')
 
 DATABASE_URL = config('DATABASE_URL', default='')
 if DATABASE_URL:

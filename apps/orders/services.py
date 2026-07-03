@@ -168,6 +168,9 @@ class OrderService:
 
     @staticmethod
     def ship_order(seller_order, tracking_number=None, tracking_url=None):
+        if seller_order.status in ['shipped', 'delivered', 'cancelled']:
+            raise ValueError(f'Cannot ship order that is already {seller_order.status}')
+        
         seller_order.status = 'shipped'
         seller_order.tracking_number = tracking_number
         seller_order.tracking_url = tracking_url
@@ -191,6 +194,11 @@ class OrderService:
 
     @staticmethod
     def deliver_order(seller_order):
+        if seller_order.status in ['delivered', 'cancelled']:
+            raise ValueError(f'Cannot deliver order that is already {seller_order.status}')
+        if seller_order.status != 'shipped':
+            raise ValueError('Order must be shipped before it can be delivered')
+            
         seller_order.status = 'delivered'
         seller_order.delivered_at = timezone.now()
         seller_order.save()

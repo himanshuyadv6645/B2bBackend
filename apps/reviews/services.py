@@ -10,9 +10,10 @@ class ReviewService:
             order_item = OrderItem.objects.get(
                 id=data['order_item_id'],
                 order__buyer=buyer,
+                order__status='delivered',
             )
         except OrderItem.DoesNotExist:
-            raise ValueError('Invalid order item')
+            raise ValueError('You can only review products from delivered orders')
 
         # Check if already reviewed
         if ProductReview.objects.filter(buyer=buyer, order_item=order_item).exists():

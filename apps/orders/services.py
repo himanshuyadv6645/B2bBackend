@@ -21,6 +21,12 @@ class OrderService:
         total_tax = Decimal('0.00')
         total_shipping = Decimal('0.00')
 
+        from apps.buyers.models import BuyerAddress
+        if not BuyerAddress.objects.filter(id=billing_address_id, buyer=buyer).exists():
+            raise ValueError('Invalid billing address')
+        if not BuyerAddress.objects.filter(id=shipping_address_id, buyer=buyer).exists():
+            raise ValueError('Invalid shipping address')
+
         from apps.pricing.models import SellerPricing
         from apps.pricing.services import PricingService
 

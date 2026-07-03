@@ -15,6 +15,12 @@ from common.response import success_response, created_response
 from common.pagination import StandardResultsPagination
 
 
+def _truthy(value):
+    """Treat only genuinely true-ish query strings as True, so `?flag=false`
+    (a non-empty string) doesn't wrongly enable a boolean filter."""
+    return str(value).lower() in ('true', '1', 'yes') if value is not None else False
+
+
 def _get_category_and_descendant_ids(category_value):
     """Resolve a category value (UUID or slug) to a set of category IDs
     including all descendants. Returns None if no match found."""
@@ -98,11 +104,11 @@ class ProductListView(generics.ListAPIView):
                 )
             else:
                 queryset = queryset.filter(name_q)
-        if is_featured:
+        if _truthy(is_featured):
             queryset = queryset.filter(is_featured=True)
-        if is_trending:
+        if _truthy(is_trending):
             queryset = queryset.filter(is_trending=True)
-        if is_top_seller:
+        if _truthy(is_top_seller):
             queryset = queryset.filter(is_top_seller=True)
         if min_rating:
             queryset = queryset.filter(average_rating__gte=min_rating)

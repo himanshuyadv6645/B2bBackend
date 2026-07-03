@@ -46,6 +46,13 @@ class OrderService:
         for cart_item in cart_items:
             tax_amount = cart_item.unit_price * cart_item.quantity * cart_item.tax_rate / 100
 
+            # Honor free shipping the same way the order-level total does above, so
+            # the per-seller order (and its invoice) totals match Order.total_shipping.
+            is_free_shipping = cart_item.seller.pricing.filter(
+                variant=cart_item.variant, free_shipping=True
+            ).exists()
+            item_shipping = Decimal('0.00') if is_free_shipping else cart_item.shipping_charge
+
             product_image = None
             primary_img = cart_item.variant.images.filter(is_primary=True).first()
             if primary_img:
@@ -66,7 +73,7 @@ class OrderService:
                 unit_price=cart_item.unit_price,
                 tax_rate=cart_item.tax_rate,
                 tax_amount=tax_amount,
-                shipping_charge=cart_item.shipping_charge,
+                shipping_charge=item_shipping,
                 total_price=cart_item.total_price,
             )
 
@@ -80,7 +87,7 @@ class OrderService:
                 }
             seller_orders[seller_id]['subtotal'] += cart_item.total_price
             seller_orders[seller_id]['total_tax'] += tax_amount
-            seller_orders[seller_id]['total_shipping'] += cart_item.shipping_charge
+            seller_orders[seller_id]['total_shipping'] += item_shipping
 
             # Reserve stock
             inventory = cart_item.variant.inventory.filter(seller=cart_item.seller).first()

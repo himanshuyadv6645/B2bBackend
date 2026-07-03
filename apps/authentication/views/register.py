@@ -40,6 +40,8 @@ class RegisterView(APIView):
                     'user': {
                         'id': str(user.id),
                         'email': user.email,
+                        'full_name': user.full_name,
+                        'phone': user.phone,
                         'role': user.role,
                         'is_active': user.is_active,
                     },
@@ -73,6 +75,8 @@ class LoginView(APIView):
                     'user': {
                         'id': str(user.id),
                         'email': user.email,
+                        'full_name': user.full_name,
+                        'phone': user.phone,
                         'role': user.role,
                         'is_active': user.is_active,
                     },
@@ -132,6 +136,7 @@ class ProfileView(APIView):
             data={
                 'id': str(user.id),
                 'email': user.email,
+                'full_name': user.full_name,
                 'phone': user.phone,
                 'role': user.role,
                 'is_active': user.is_active,

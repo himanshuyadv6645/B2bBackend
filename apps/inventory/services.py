@@ -32,6 +32,8 @@ class InventoryService:
     @staticmethod
     @transaction.atomic
     def adjust_stock(inventory, quantity, change_type, notes='', performed_by=None):
+        # Lock the row so concurrent stock changes can't race on the check below.
+        inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
         old_stock = inventory.total_stock
 
         if change_type == 'add':
@@ -69,6 +71,9 @@ class InventoryService:
     def reserve_stock(inventory, quantity, seller=None):
         if seller and inventory.seller != seller:
             raise ValueError('Cannot reserve stock from another seller')
+        # Lock the row so two concurrent orders can't both pass the availability
+        # check and oversell the same units.
+        inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
         if inventory.available_stock < quantity:
             raise ValueError('Insufficient stock to reserve')
         inventory.reserved_stock += quantity
@@ -78,6 +83,7 @@ class InventoryService:
     @staticmethod
     @transaction.atomic
     def release_stock(inventory, quantity):
+        inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
         inventory.reserved_stock = max(0, inventory.reserved_stock - quantity)
         inventory.save()
         return inventory

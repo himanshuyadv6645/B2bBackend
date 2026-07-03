@@ -30,7 +30,14 @@ class CartService:
         except SellerPricing.DoesNotExist:
             raise ValueError('Product not available from this seller')
 
-        if quantity < pricing.minimum_order_quantity:
+        # Adding to an item already in the cart increases its quantity, so validate
+        # MOQ and stock against the RESULTING total, not just the amount being added.
+        existing = CartItem.objects.filter(
+            cart=cart, seller_id=seller_id, variant_id=variant_id
+        ).first()
+        target_quantity = quantity + (existing.quantity if existing else 0)
+
+        if target_quantity < pricing.minimum_order_quantity:
             raise ValueError(f'Minimum order quantity is {pricing.minimum_order_quantity}')
 
         inventory = Inventory.objects.filter(
@@ -38,30 +45,27 @@ class CartService:
             variant_id=variant_id,
         ).first()
 
-        if inventory and inventory.available_stock < quantity:
+        if inventory and inventory.available_stock < target_quantity:
             raise ValueError('Insufficient stock')
 
-        unit_price = PricingService.get_price_for_quantity(pricing, quantity)
+        unit_price = PricingService.get_price_for_quantity(pricing, target_quantity)
 
-        cart_item, created = CartItem.objects.get_or_create(
+        if existing:
+            existing.quantity = target_quantity
+            existing.unit_price = unit_price
+            existing.save()
+            return existing
+
+        return CartItem.objects.create(
             cart=cart,
             seller_id=seller_id,
             variant_id=variant_id,
-            defaults={
-                'quantity': quantity,
-                'unit_price': unit_price,
-                'tax_rate': pricing.tax_rate,
-                'shipping_charge': pricing.shipping_charge,
-                'notes': notes,
-            },
+            quantity=quantity,
+            unit_price=unit_price,
+            tax_rate=pricing.tax_rate,
+            shipping_charge=pricing.shipping_charge,
+            notes=notes,
         )
-
-        if not created:
-            cart_item.quantity += quantity
-            cart_item.unit_price = PricingService.get_price_for_quantity(pricing, cart_item.quantity)
-            cart_item.save()
-
-        return cart_item
 
     @staticmethod
     def update_cart_item(cart_item_id, buyer, quantity):

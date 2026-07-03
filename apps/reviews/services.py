@@ -101,7 +101,7 @@ class ReviewService:
     def approve_product_review(review_id):
         review = ProductReview.objects.get(id=review_id)
         review.status = 'approved'
-        review.save(update_fields=['status'])
+        review.save(update_fields=['status', 'updated_at'])
         ReviewService.update_product_rating(review.product)
         return review
 
@@ -109,7 +109,7 @@ class ReviewService:
     def reject_product_review(review_id):
         review = ProductReview.objects.get(id=review_id)
         review.status = 'rejected'
-        review.save(update_fields=['status'])
+        review.save(update_fields=['status', 'updated_at'])
         ReviewService.update_product_rating(review.product)
         return review
 
@@ -117,7 +117,7 @@ class ReviewService:
     def approve_seller_review(review_id):
         review = SellerReview.objects.get(id=review_id)
         review.status = 'approved'
-        review.save(update_fields=['status'])
+        review.save(update_fields=['status', 'updated_at'])
         ReviewService.update_seller_rating(review.seller)
         return review
 
@@ -125,6 +125,6 @@ class ReviewService:
     def reject_seller_review(review_id):
         review = SellerReview.objects.get(id=review_id)
         review.status = 'rejected'
-        review.save(update_fields=['status'])
+        review.save(update_fields=['status', 'updated_at'])
         ReviewService.update_seller_rating(review.seller)
         return review

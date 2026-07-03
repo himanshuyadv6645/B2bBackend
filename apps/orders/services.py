@@ -150,6 +150,8 @@ class OrderService:
 
     @staticmethod
     def cancel_order(order, reason=''):
+        if order.status in ['shipped', 'delivered', 'cancelled']:
+            raise ValueError(f'Cannot cancel order because it is already {order.status}')
         order.status = 'cancelled'
         order.cancellation_reason = reason
         order.cancelled_at = timezone.now()
@@ -171,6 +173,13 @@ class OrderService:
         seller_order.tracking_url = tracking_url
         seller_order.shipped_at = timezone.now()
         seller_order.save()
+
+        # Deduct fulfilled stock permanently
+        order_items = seller_order.order.items.filter(seller=seller_order.seller)
+        for item in order_items:
+            inventory = item.variant.inventory.filter(seller=item.seller).first()
+            if inventory:
+                InventoryService.fulfill_stock(inventory, item.quantity)
 
         # Check if all seller orders are shipped
         order = seller_order.order

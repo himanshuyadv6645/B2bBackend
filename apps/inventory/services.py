@@ -89,6 +89,17 @@ class InventoryService:
         return inventory
 
     @staticmethod
+    @transaction.atomic
+    def fulfill_stock(inventory, quantity):
+        inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
+        if inventory.reserved_stock < quantity:
+            quantity = inventory.reserved_stock
+        inventory.reserved_stock -= quantity
+        inventory.total_stock = max(0, inventory.total_stock - quantity)
+        inventory.save()
+        return inventory
+
+    @staticmethod
     def get_low_stock_items(seller=None):
         queryset = Inventory.objects.filter(
             available_stock__lte=models.F('low_stock_threshold')

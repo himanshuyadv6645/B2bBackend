@@ -51,7 +51,13 @@ class ProductVariantCreateView(generics.CreateAPIView):
 class ProductVariantUpdateView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsApprovedSeller]
     serializer_class = ProductVariantCreateSerializer
-    queryset = ProductVariant.objects.all()
+
+    def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return ProductVariant.objects.all()
+        from apps.sellers.services import SellerService
+        profile = SellerService.get_profile(self.request.user)
+        return ProductVariant.objects.filter(product__seller=profile)
 
     @extend_schema(tags=['Product Variants'], summary='Seller: Update variant')
     def patch(self, request, *args, **kwargs):

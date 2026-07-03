@@ -27,6 +27,12 @@ class VariantImageListCreateView(generics.ListCreateAPIView):
         except ProductVariant.DoesNotExist:
             return not_found_response(message='Variant not found')
 
+        if request.user.role == 'seller':
+            from apps.sellers.services import SellerService
+            profile = SellerService.get_profile(request.user)
+            if variant.product.seller != profile:
+                return forbidden_response(message='You do not have permission to modify this variant')
+
         image_file = request.FILES.get('image')
         if not image_file:
             return bad_request_response(message='No image file provided')
@@ -69,5 +75,12 @@ class VariantImageDeleteView(generics.DestroyAPIView):
     @extend_schema(tags=['Variant Images'], summary='Delete variant image')
     def delete(self, request, *args, **kwargs):
         image = self.get_object()
+
+        if request.user.role == 'seller':
+            from apps.sellers.services import SellerService
+            profile = SellerService.get_profile(request.user)
+            if image.variant.product.seller != profile:
+                return forbidden_response(message='You do not have permission to modify this variant')
+
         image.delete()
         return success_response(message='Image deleted')

@@ -47,3 +47,12 @@ class ProductVariantCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductVariant
         fields = ['product', 'sku', 'name', 'description', 'is_active', 'sort_order']
+
+    def validate_product(self, value):
+        request = self.context.get('request')
+        if request and request.user.role == 'seller':
+            from apps.sellers.services import SellerService
+            profile = SellerService.get_profile(request.user)
+            if value.seller != profile:
+                raise serializers.ValidationError('You cannot add variants to a product you do not own.')
+        return value

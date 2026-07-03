@@ -4,15 +4,16 @@ from apps.reviews.models import ProductReview, SellerReview
 
 class ProductReviewSerializer(serializers.ModelSerializer):
     buyer_name = serializers.CharField(source='buyer.full_name', read_only=True)
+    product_name = serializers.CharField(source='product.name', read_only=True)
 
     class Meta:
         model = ProductReview
         fields = [
-            'id', 'product', 'variant', 'buyer', 'buyer_name', 'seller',
+            'id', 'product', 'product_name', 'variant', 'buyer', 'buyer_name', 'seller',
             'order_item', 'rating', 'title', 'comment', 'images',
-            'is_verified', 'is_active', 'created_at',
+            'is_verified', 'is_active', 'status', 'created_at',
         ]
-        read_only_fields = ['id', 'buyer', 'is_verified', 'created_at']
+        read_only_fields = ['id', 'buyer', 'is_verified', 'status', 'created_at']
 
 
 class ProductReviewCreateSerializer(serializers.Serializer):
@@ -25,11 +26,12 @@ class ProductReviewCreateSerializer(serializers.Serializer):
 
 class SellerReviewSerializer(serializers.ModelSerializer):
     buyer_name = serializers.CharField(source='buyer.full_name', read_only=True)
+    seller_name = serializers.CharField(source='seller.company_name', read_only=True)
 
     class Meta:
         model = SellerReview
         fields = [
-            'id', 'seller', 'buyer', 'buyer_name', 'order',
-            'rating', 'title', 'comment', 'is_verified', 'is_active', 'created_at',
+            'id', 'seller', 'seller_name', 'buyer', 'buyer_name', 'order',
+            'rating', 'title', 'comment', 'is_verified', 'is_active', 'status', 'created_at',
         ]
-        read_only_fields = ['id', 'buyer', 'is_verified', 'created_at']
+        read_only_fields = ['id', 'buyer', 'is_verified', 'status', 'created_at']

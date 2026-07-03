@@ -28,7 +28,7 @@ class ProductReviewListCreateView(generics.ListCreateAPIView):
         product_id = self.request.query_params.get('product')
         if product_id:
             return ReviewService.get_product_reviews(product_id)
-        return ProductReview.objects.filter(is_active=True)
+        return ProductReview.objects.filter(is_active=True, status='approved')
 
     @extend_schema(tags=['Reviews'], summary='List product reviews')
     def get(self, request, *args, **kwargs):
@@ -47,7 +47,7 @@ class ProductReviewListCreateView(generics.ListCreateAPIView):
             review = ReviewService.create_product_review(profile, serializer.validated_data)
             return created_response(
                 data=ProductReviewSerializer(review).data,
-                message='Review created',
+                message='Review submitted and is pending approval.',
             )
         except ValueError as e:
             return bad_request_response(message=str(e))
@@ -66,7 +66,7 @@ class SellerReviewListCreateView(generics.ListCreateAPIView):
         seller_id = self.request.query_params.get('seller')
         if seller_id:
             return ReviewService.get_seller_reviews(seller_id)
-        return SellerReview.objects.filter(is_active=True)
+        return SellerReview.objects.filter(is_active=True, status='approved')
 
     @extend_schema(tags=['Reviews'], summary='List seller reviews')
     def get(self, request, *args, **kwargs):
@@ -85,7 +85,7 @@ class SellerReviewListCreateView(generics.ListCreateAPIView):
             reviews = ReviewService.create_seller_review(profile, serializer.validated_data)
             return created_response(
                 data=SellerReviewSerializer(reviews, many=True).data,
-                message='Review created',
+                message='Review submitted and is pending approval.',
             )
         except ValueError as e:
             return bad_request_response(message=str(e))

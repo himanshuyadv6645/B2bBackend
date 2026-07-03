@@ -34,6 +34,12 @@ class ProductReview(BaseModel):
     images = models.JSONField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')],
+        default='pending',
+        db_index=True
+    )
 
     class Meta:
         db_table = 'product_reviews'
@@ -65,6 +71,12 @@ class SellerReview(BaseModel):
     comment = models.TextField(blank=True, null=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')],
+        default='pending',
+        db_index=True
+    )
 
     class Meta:
         db_table = 'seller_reviews'

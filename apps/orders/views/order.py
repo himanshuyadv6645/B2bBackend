@@ -94,6 +94,8 @@ class BuyerCancelOrderView(APIView):
             )
         except Order.DoesNotExist:
             return not_found_response('Order not found')
+        except ValueError as e:
+            return bad_request_response(str(e))
 
 
 class SellerOrderListView(generics.ListAPIView):
@@ -141,6 +143,8 @@ class SellerShipOrderView(APIView):
             )
         except SellerOrder.DoesNotExist:
             return not_found_response('Order not found')
+        except ValueError as e:
+            return bad_request_response(str(e))
 
 
 class SellerDeliverOrderView(APIView):
@@ -158,6 +162,8 @@ class SellerDeliverOrderView(APIView):
             )
         except SellerOrder.DoesNotExist:
             return not_found_response('Order not found')
+        except ValueError as e:
+            return bad_request_response(str(e))
 
 
 class InvoiceListView(generics.ListAPIView):

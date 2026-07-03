@@ -165,11 +165,25 @@ class ProductCreateView(generics.CreateAPIView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        if self.request.user.role == 'seller':
+            from apps.sellers.services import SellerService
+            profile = SellerService.get_profile(self.request.user)
+            serializer.save(seller=profile)
+        else:
+            serializer.save()
+
 
 class ProductUpdateView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrApprovedSeller]
     serializer_class = ProductCreateUpdateSerializer
-    queryset = Product.all_objects.all()
+
+    def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return Product.all_objects.all()
+        from apps.sellers.services import SellerService
+        profile = SellerService.get_profile(self.request.user)
+        return Product.all_objects.filter(seller=profile)
 
     @extend_schema(tags=['Products'], summary='Seller: Update product')
     def patch(self, request, *args, **kwargs):

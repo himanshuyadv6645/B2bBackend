@@ -21,6 +21,37 @@ class OrderService:
         total_tax = Decimal('0.00')
         total_shipping = Decimal('0.00')
 
+        from apps.pricing.models import SellerPricing
+        from apps.pricing.services import PricingService
+
+        # Validate pricing, MOQ, and stock before proceeding
+        for item in cart_items:
+            try:
+                pricing = SellerPricing.objects.get(
+                    seller=item.seller,
+                    variant=item.variant,
+                    is_active=True,
+                )
+            except SellerPricing.DoesNotExist:
+                raise ValueError(f'Product {item.variant.product.name} is no longer available. Please remove it from your cart.')
+
+            if item.quantity < pricing.minimum_order_quantity:
+                raise ValueError(f'Minimum order for {item.variant.product.name} is {pricing.minimum_order_quantity}. Please update your cart.')
+
+            current_price = PricingService.get_price_for_quantity(pricing, item.quantity)
+            if item.unit_price != current_price:
+                # Update the cart item to reflect new pricing so user sees it next time
+                item.unit_price = current_price
+                item.tax_rate = pricing.tax_rate
+                item.shipping_charge = Decimal('0.00') if pricing.free_shipping else pricing.shipping_charge
+                item.save(update_fields=['unit_price', 'tax_rate', 'shipping_charge'])
+                raise ValueError(f'The price for {item.variant.product.name} has changed. Your cart has been updated. Please review before checking out.')
+
+            # Check stock explicitly before reserving
+            inventory = item.variant.inventory.filter(seller=item.seller).first()
+            if not inventory or inventory.available_stock < item.quantity:
+                raise ValueError(f'Insufficient stock for {item.variant.product.name}.')
+
         for item in cart_items:
             subtotal += item.total_price
             tax_amount = item.unit_price * item.quantity * item.tax_rate / 100

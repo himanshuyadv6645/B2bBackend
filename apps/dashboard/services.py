@@ -42,16 +42,16 @@ class DashboardService:
 
     @staticmethod
     def get_seller_dashboard(seller):
-        order_stats = OrderItem.objects.filter(seller=seller).aggregate(
-            # Count distinct orders, not line items.
-            total_orders=Count('order', distinct=True),
-            pending_orders=Count('order', filter=Q(status='pending'), distinct=True),
-            # Cancelled line items are not revenue — exclude them from the total.
-            total_revenue=Sum('total_price', filter=~Q(status='cancelled')),
-            pending_revenue=Sum('total_price', filter=Q(status='pending')),
+        order_stats = SellerOrder.objects.filter(seller=seller).aggregate(
+            total_orders=Count('id'),
+            pending_orders=Count('id', filter=Q(status='pending')),
+            total_revenue=Sum('total_amount', filter=~Q(status='cancelled')),
+            pending_revenue=Sum('total_amount', filter=Q(status='pending')),
         )
 
-        recent_orders = OrderItem.objects.filter(seller=seller).select_related('order')[:5]
+        recent_orders = SellerOrder.objects.filter(seller=seller).select_related(
+            'order', 'order__buyer__user'
+        ).order_by('-created_at')[:5]
 
         products = Product.objects.filter(
             variants__seller_pricing__seller=seller,
@@ -60,7 +60,7 @@ class DashboardService:
         total_products = products.count()
         active_products = products.filter(is_active=True).count()
 
-        total_customers = OrderItem.objects.filter(seller=seller).values(
+        total_customers = SellerOrder.objects.filter(seller=seller).values(
             'order__buyer'
         ).distinct().count()
         today = timezone.now().date()

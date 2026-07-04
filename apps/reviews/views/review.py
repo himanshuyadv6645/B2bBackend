@@ -82,9 +82,9 @@ class SellerReviewListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            reviews = ReviewService.create_seller_review(profile, serializer.validated_data)
+            review = ReviewService.create_seller_review(profile, serializer.validated_data)
             return created_response(
-                data=SellerReviewSerializer(reviews, many=True).data,
+                data=SellerReviewSerializer(review).data,
                 message='Review submitted and is pending approval.',
             )
         except ValueError as e:

@@ -9,7 +9,6 @@ from common.mixins import generate_order_number, generate_invoice_number
 
 class OrderService:
     @staticmethod
-    @transaction.atomic
     def create_order(buyer, billing_address_id, shipping_address_id, notes=''):
         cart_items = CartService.get_cart_items(buyer).select_related(
             'seller', 'variant__product'
@@ -50,7 +49,7 @@ class OrderService:
                 item.unit_price = current_price
                 item.tax_rate = pricing.tax_rate
                 item.shipping_charge = Decimal('0.00') if pricing.free_shipping else pricing.shipping_charge
-                item.save(update_fields=['unit_price', 'tax_rate', 'shipping_charge'])
+                item.save(update_fields=['unit_price', 'tax_rate', 'shipping_charge', 'total_price'])
                 raise ValueError(f'The price for {item.variant.product.name} has changed. Your cart has been updated. Please review before checking out.')
 
             # Check stock explicitly before reserving
@@ -58,91 +57,92 @@ class OrderService:
             if not inventory or inventory.available_stock < item.quantity:
                 raise ValueError(f'Insufficient stock for {item.variant.product.name}.')
 
-        for item in cart_items:
-            subtotal += item.total_price
-            tax_amount = item.unit_price * item.quantity * item.tax_rate / 100
-            total_tax += tax_amount
-            if not item.seller.pricing.filter(variant=item.variant, free_shipping=True).exists():
-                total_shipping += item.shipping_charge
+        with transaction.atomic():
+            for item in cart_items:
+                subtotal += item.total_price
+                tax_amount = item.unit_price * item.quantity * item.tax_rate / 100
+                total_tax += tax_amount
+                if not item.seller.pricing.filter(variant=item.variant, free_shipping=True).exists():
+                    total_shipping += item.shipping_charge
 
-        total_amount = subtotal + total_tax + total_shipping
+            total_amount = subtotal + total_tax + total_shipping
 
-        order = Order.objects.create(
-            order_number=generate_order_number(),
-            buyer=buyer,
-            billing_address_id=billing_address_id,
-            shipping_address_id=shipping_address_id,
-            subtotal=subtotal,
-            total_tax=total_tax,
-            total_shipping=total_shipping,
-            total_amount=total_amount,
-            notes=notes,
-        )
-
-        seller_orders = {}
-        for cart_item in cart_items:
-            tax_amount = cart_item.unit_price * cart_item.quantity * cart_item.tax_rate / 100
-
-            # Honor free shipping the same way the order-level total does above, so
-            # the per-seller order (and its invoice) totals match Order.total_shipping.
-            is_free_shipping = cart_item.seller.pricing.filter(
-                variant=cart_item.variant, free_shipping=True
-            ).exists()
-            item_shipping = Decimal('0.00') if is_free_shipping else cart_item.shipping_charge
-
-            product_image = None
-            primary_img = cart_item.variant.images.filter(is_primary=True).first()
-            if primary_img:
-                product_image = primary_img.image_url
-            else:
-                first_img = cart_item.variant.images.first()
-                if first_img:
-                    product_image = first_img.image_url
-
-            order_item = OrderItem.objects.create(
-                order=order,
-                seller=cart_item.seller,
-                variant=cart_item.variant,
-                product_name=cart_item.variant.product.name,
-                variant_name=cart_item.variant.name,
-                product_image=product_image,
-                quantity=cart_item.quantity,
-                unit_price=cart_item.unit_price,
-                tax_rate=cart_item.tax_rate,
-                tax_amount=tax_amount,
-                shipping_charge=item_shipping,
-                total_price=cart_item.total_price,
+            order = Order.objects.create(
+                order_number=generate_order_number(),
+                buyer=buyer,
+                billing_address_id=billing_address_id,
+                shipping_address_id=shipping_address_id,
+                subtotal=subtotal,
+                total_tax=total_tax,
+                total_shipping=total_shipping,
+                total_amount=total_amount,
+                notes=notes,
             )
 
-            seller_id = str(cart_item.seller.id)
-            if seller_id not in seller_orders:
-                seller_orders[seller_id] = {
-                    'seller': cart_item.seller,
-                    'subtotal': Decimal('0.00'),
-                    'total_tax': Decimal('0.00'),
-                    'total_shipping': Decimal('0.00'),
-                }
-            seller_orders[seller_id]['subtotal'] += cart_item.total_price
-            seller_orders[seller_id]['total_tax'] += tax_amount
-            seller_orders[seller_id]['total_shipping'] += item_shipping
+            seller_orders = {}
+            for cart_item in cart_items:
+                tax_amount = cart_item.unit_price * cart_item.quantity * cart_item.tax_rate / 100
 
-            # Reserve stock
-            inventory = cart_item.variant.inventory.filter(seller=cart_item.seller).first()
-            if inventory:
-                InventoryService.reserve_stock(inventory, cart_item.quantity)
+                # Honor free shipping the same way the order-level total does above, so
+                # the per-seller order (and its invoice) totals match Order.total_shipping.
+                is_free_shipping = cart_item.seller.pricing.filter(
+                    variant=cart_item.variant, free_shipping=True
+                ).exists()
+                item_shipping = Decimal('0.00') if is_free_shipping else cart_item.shipping_charge
 
-        for seller_id, data in seller_orders.items():
-            SellerOrder.objects.create(
-                order=order,
-                seller=data['seller'],
-                subtotal=data['subtotal'],
-                total_tax=data['total_tax'],
-                total_shipping=data['total_shipping'],
-                total_amount=data['subtotal'] + data['total_tax'] + data['total_shipping'],
-            )
+                product_image = None
+                primary_img = cart_item.variant.images.filter(is_primary=True).first()
+                if primary_img:
+                    product_image = primary_img.image_url
+                else:
+                    first_img = cart_item.variant.images.first()
+                    if first_img:
+                        product_image = first_img.image_url
 
-        # Clear cart
-        CartService.clear_cart(buyer)
+                order_item = OrderItem.objects.create(
+                    order=order,
+                    seller=cart_item.seller,
+                    variant=cart_item.variant,
+                    product_name=cart_item.variant.product.name,
+                    variant_name=cart_item.variant.name,
+                    product_image=product_image,
+                    quantity=cart_item.quantity,
+                    unit_price=cart_item.unit_price,
+                    tax_rate=cart_item.tax_rate,
+                    tax_amount=tax_amount,
+                    shipping_charge=item_shipping,
+                    total_price=cart_item.total_price,
+                )
+
+                seller_id = str(cart_item.seller.id)
+                if seller_id not in seller_orders:
+                    seller_orders[seller_id] = {
+                        'seller': cart_item.seller,
+                        'subtotal': Decimal('0.00'),
+                        'total_tax': Decimal('0.00'),
+                        'total_shipping': Decimal('0.00'),
+                    }
+                seller_orders[seller_id]['subtotal'] += cart_item.total_price
+                seller_orders[seller_id]['total_tax'] += tax_amount
+                seller_orders[seller_id]['total_shipping'] += item_shipping
+
+                # Reserve stock
+                inventory = cart_item.variant.inventory.filter(seller=cart_item.seller).first()
+                if inventory:
+                    InventoryService.reserve_stock(inventory, cart_item.quantity)
+
+            for seller_id, data in seller_orders.items():
+                SellerOrder.objects.create(
+                    order=order,
+                    seller=data['seller'],
+                    subtotal=data['subtotal'],
+                    total_tax=data['total_tax'],
+                    total_shipping=data['total_shipping'],
+                    total_amount=data['subtotal'] + data['total_tax'] + data['total_shipping'],
+                )
+
+            # Clear cart
+            CartService.clear_cart(buyer)
 
         return order
 
@@ -158,11 +158,16 @@ class OrderService:
     def cancel_order(order, reason=''):
         if order.status in ['shipped', 'delivered', 'cancelled']:
             raise ValueError(f'Cannot cancel order because it is already {order.status}')
+            
+        if order.seller_orders.filter(status__in=['shipped', 'delivered']).exists():
+            raise ValueError('Cannot cancel order because some items have already been shipped.')
+            
         order.status = 'cancelled'
         order.cancellation_reason = reason
         order.cancelled_at = timezone.now()
         order.save(update_fields=['status', 'cancellation_reason', 'cancelled_at', 'updated_at'])
         order.items.update(status='cancelled')
+        order.seller_orders.update(status='cancelled')
 
         # Release reserved stock
         for item in order.items.all():
@@ -183,8 +188,9 @@ class OrderService:
         seller_order.shipped_at = timezone.now()
         seller_order.save()
 
-        # Deduct fulfilled stock permanently
+        # Deduct fulfilled stock permanently and update item statuses
         order_items = seller_order.order.items.filter(seller=seller_order.seller)
+        order_items.update(status='shipped')
         for item in order_items:
             inventory = item.variant.inventory.filter(seller=item.seller).first()
             if inventory:
@@ -208,6 +214,9 @@ class OrderService:
         seller_order.status = 'delivered'
         seller_order.delivered_at = timezone.now()
         seller_order.save()
+        
+        # Update item statuses
+        seller_order.order.items.filter(seller=seller_order.seller).update(status='delivered')
 
         # Check if all seller orders are delivered
         order = seller_order.order

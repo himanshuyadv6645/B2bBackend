@@ -21,6 +21,10 @@ class ProductService:
             product.min_selling_price = min(prices)
             product.max_selling_price = max(prices)
             product.total_sellers = pricing.values('seller').distinct().count()
+        else:
+            product.min_selling_price = None
+            product.max_selling_price = None
+            product.total_sellers = 0
         
         inventory = Inventory.objects.filter(variant__product=product)
         product.total_stock = sum(inv.available_stock for inv in inventory)
@@ -28,6 +32,26 @@ class ProductService:
             'min_selling_price', 'max_selling_price',
             'total_sellers', 'total_stock', 'updated_at',
         ])
+        
+        # Update variant stats as well
+        for variant in product.variants.all():
+            v_pricing = SellerPricing.objects.filter(variant=variant, is_active=True)
+            if v_pricing.exists():
+                v_prices = v_pricing.values_list('selling_price', flat=True)
+                variant.min_selling_price = min(v_prices)
+                variant.max_selling_price = max(v_prices)
+                variant.total_sellers = v_pricing.values('seller').distinct().count()
+            else:
+                variant.min_selling_price = None
+                variant.max_selling_price = None
+                variant.total_sellers = 0
+            
+            v_inventory = Inventory.objects.filter(variant=variant)
+            variant.total_stock = sum(inv.available_stock for inv in v_inventory)
+            variant.save(update_fields=[
+                'min_selling_price', 'max_selling_price',
+                'total_sellers', 'total_stock'
+            ])
 
     @staticmethod
     def add_attribute(product, key, value, sort_order=0):

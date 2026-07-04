@@ -82,7 +82,7 @@ class SellerReview(BaseModel):
         db_table = 'seller_reviews'
         verbose_name = 'Seller Review'
         verbose_name_plural = 'Seller Reviews'
-        unique_together = ('buyer', 'order')
+        unique_together = ('buyer', 'order', 'seller')
         ordering = ['-created_at']
 
     def __str__(self):

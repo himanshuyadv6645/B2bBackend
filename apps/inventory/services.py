@@ -1,5 +1,6 @@
 from django.db import transaction, models
 from apps.inventory.models import Inventory, StockHistory, InventoryLog
+from apps.products.services import ProductService
 
 
 class InventoryService:
@@ -27,6 +28,7 @@ class InventoryService:
             inventory.total_stock = data.get('total_stock', inventory.total_stock)
             inventory.low_stock_threshold = data.get('low_stock_threshold', inventory.low_stock_threshold)
             inventory.save()
+        ProductService.update_product_stats(inventory.variant.product_id)
         return inventory
 
     @staticmethod
@@ -43,6 +45,8 @@ class InventoryService:
                 raise ValueError('Insufficient stock')
             inventory.total_stock -= quantity
         elif change_type == 'adjustment':
+            if quantity < inventory.reserved_stock:
+                raise ValueError(f'Cannot set stock below reserved amount ({inventory.reserved_stock})')
             inventory.total_stock = quantity
 
         inventory.save()
@@ -64,6 +68,7 @@ class InventoryService:
             performed_by=performed_by,
         )
 
+        ProductService.update_product_stats(inventory.variant.product_id)
         return inventory
 
     @staticmethod
@@ -78,6 +83,7 @@ class InventoryService:
             raise ValueError('Insufficient stock to reserve')
         inventory.reserved_stock += quantity
         inventory.save()
+        ProductService.update_product_stats(inventory.variant.product_id)
         return inventory
 
     @staticmethod
@@ -86,17 +92,20 @@ class InventoryService:
         inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
         inventory.reserved_stock = max(0, inventory.reserved_stock - quantity)
         inventory.save()
+        ProductService.update_product_stats(inventory.variant.product_id)
         return inventory
 
     @staticmethod
     @transaction.atomic
     def fulfill_stock(inventory, quantity):
         inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
-        if inventory.reserved_stock < quantity:
-            quantity = inventory.reserved_stock
-        inventory.reserved_stock -= quantity
+        
+        reserve_deduction = min(inventory.reserved_stock, quantity)
+        inventory.reserved_stock -= reserve_deduction
         inventory.total_stock = max(0, inventory.total_stock - quantity)
+        
         inventory.save()
+        ProductService.update_product_stats(inventory.variant.product_id)
         return inventory
 
     @staticmethod

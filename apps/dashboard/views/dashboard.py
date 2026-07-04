@@ -23,6 +23,15 @@ class BuyerDashboardView(APIView):
         return success_response(data=data)
 
 
+class DashboardSellerRecentOrderSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source='order.order_number', read_only=True)
+    buyer_name = serializers.CharField(source='order.buyer.full_name', read_only=True)
+
+    class Meta:
+        from apps.orders.models import SellerOrder
+        model = SellerOrder
+        fields = ['id', 'order_number', 'buyer_name', 'status', 'total_amount', 'created_at']
+
 class SellerDashboardView(APIView):
     permission_classes = [IsSellerUser]
 
@@ -30,8 +39,7 @@ class SellerDashboardView(APIView):
     def get(self, request):
         profile = SellerService.get_profile(request.user)
         data = DashboardService.get_seller_dashboard(profile)
-        from apps.orders.serializers.order import OrderItemSerializer
-        data['recent_orders'] = OrderItemSerializer(data['recent_orders'], many=True).data
+        data['recent_orders'] = DashboardSellerRecentOrderSerializer(data['recent_orders'], many=True).data
         return success_response(data=data)
 
 

@@ -122,6 +122,8 @@ class CompareSellersView(generics.GenericAPIView):
         results = []
         for pricing in pricing_list:
             price = PricingService.get_price_for_quantity(pricing, quantity)
+            inventory = pricing.variant.inventory.filter(seller=pricing.seller).first()
+            available_stock = inventory.available_stock if inventory else 0
             results.append({
                 'id': str(pricing.id),
                 'seller': str(pricing.seller_id),
@@ -135,6 +137,7 @@ class CompareSellersView(generics.GenericAPIView):
                 'shipping_charge': str(pricing.shipping_charge),
                 'free_shipping': pricing.free_shipping,
                 'minimum_order_quantity': pricing.minimum_order_quantity,
+                'available_stock': available_stock,
                 'warranty_period': pricing.warranty_period,
                 'delivery_time_days': pricing.delivery_time_days,
                 'wholesale_tiers': WholesaleTierSerializer(pricing.wholesale_tiers.all(), many=True).data,

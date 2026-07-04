@@ -30,6 +30,9 @@ class CartService:
         except SellerPricing.DoesNotExist:
             raise ValueError('Product not available from this seller')
 
+        if quantity < 1:
+            raise ValueError('Quantity must be at least 1')
+
         # Adding to an item already in the cart increases its quantity, so validate
         # MOQ and stock against the RESULTING total, not just the amount being added.
         existing = CartItem.objects.filter(
@@ -81,7 +84,10 @@ class CartService:
             is_active=True,
         ).first()
 
-        if pricing and quantity < pricing.minimum_order_quantity:
+        if not pricing:
+            raise ValueError('Product is no longer available from this seller')
+
+        if quantity < pricing.minimum_order_quantity:
             raise ValueError(f'Minimum order quantity is {pricing.minimum_order_quantity}')
 
         inventory = Inventory.objects.filter(
@@ -89,12 +95,11 @@ class CartService:
             variant=cart_item.variant,
         ).first()
 
-        if inventory and inventory.available_stock < quantity:
+        if not inventory or inventory.available_stock < quantity:
             raise ValueError('Insufficient stock')
 
         cart_item.quantity = quantity
-        if pricing:
-            cart_item.unit_price = PricingService.get_price_for_quantity(pricing, quantity)
+        cart_item.unit_price = PricingService.get_price_for_quantity(pricing, quantity)
         cart_item.save()
         return cart_item
 

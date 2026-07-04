@@ -1,4 +1,5 @@
 from apps.pricing.models import SellerPricing, WholesaleTier
+from apps.products.services import ProductService
 
 
 class PricingService:
@@ -23,7 +24,7 @@ class PricingService:
         for pricing in pricing_list:
             price = pricing.get_wholesale_price(quantity)
             if price is None:
-                price = pricing.offer_price or pricing.selling_price
+                price = pricing.offer_price if pricing.offer_price is not None else pricing.selling_price
 
             if best_price is None or price < best_price:
                 best_price = price
@@ -34,9 +35,9 @@ class PricingService:
     @staticmethod
     def get_price_for_quantity(pricing, quantity):
         wholesale_price = pricing.get_wholesale_price(quantity)
-        if wholesale_price:
+        if wholesale_price is not None:
             return wholesale_price
-        if pricing.offer_price:
+        if pricing.offer_price is not None:
             return pricing.offer_price
         return pricing.selling_price
 
@@ -44,6 +45,7 @@ class PricingService:
     def create_pricing(seller, data):
         pricing = SellerPricing(seller=seller, **data)
         pricing.save()
+        ProductService.update_product_stats(pricing.variant.product_id)
         return pricing
 
     @staticmethod
@@ -52,6 +54,7 @@ class PricingService:
             if value is not None:
                 setattr(pricing, field, value)
         pricing.save()
+        ProductService.update_product_stats(pricing.variant.product_id)
         return pricing
 
     @staticmethod

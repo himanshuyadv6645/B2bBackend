@@ -14,6 +14,14 @@ class ReviewService:
             product=product, is_active=True, status='approved'
         ).count()
         product.save(update_fields=['average_rating', 'total_reviews', 'updated_at'])
+        
+        # Update ratings for individual variants
+        for variant in product.variants.all():
+            v_avg = ProductReview.objects.filter(
+                variant=variant, is_active=True, status='approved'
+            ).aggregate(avg=Avg('rating'))['avg'] or 0
+            variant.average_rating = round(v_avg, 2)
+            variant.save(update_fields=['average_rating'])
 
     @staticmethod
     def update_seller_rating(seller):
@@ -32,7 +40,7 @@ class ReviewService:
             order_item = OrderItem.objects.get(
                 id=data['order_item_id'],
                 order__buyer=buyer,
-                order__status='delivered',
+                status='delivered',
             )
         except OrderItem.DoesNotExist:
             raise ValueError('You can only review products from delivered orders')
@@ -62,34 +70,36 @@ class ReviewService:
 
     @staticmethod
     def create_seller_review(buyer, data):
-        from apps.orders.models import Order
+        from apps.orders.models import SellerOrder
+        seller_id = data.get('seller_id')
+        if not seller_id:
+            raise ValueError('seller_id is required')
+            
         try:
-            order = Order.objects.get(
-                id=data['order_id'],
-                buyer=buyer,
+            seller_order = SellerOrder.objects.get(
+                order_id=data['order_id'],
+                seller_id=seller_id,
+                order__buyer=buyer,
                 status='delivered',
             )
-        except Order.DoesNotExist:
-            raise ValueError('Invalid order')
+        except SellerOrder.DoesNotExist:
+            raise ValueError('Invalid order or this seller has not delivered their portion yet')
 
-        if SellerReview.objects.filter(buyer=buyer, order=order).exists():
-            raise ValueError('You have already reviewed this seller')
+        if SellerReview.objects.filter(buyer=buyer, order_id=data['order_id'], seller_id=seller_id).exists():
+            raise ValueError('You have already reviewed this seller for this order')
 
-        reviews = []
-        for seller_order in order.seller_orders.all():
-            review = SellerReview.objects.create(
-                seller=seller_order.seller,
-                buyer=buyer,
-                order=order,
-                rating=data['rating'],
-                title=data.get('title', ''),
-                comment=data.get('comment', ''),
-                is_verified=True,
-                status='pending',
-            )
-            reviews.append(review)
+        review = SellerReview.objects.create(
+            seller_id=seller_id,
+            buyer=buyer,
+            order_id=data['order_id'],
+            rating=data['rating'],
+            title=data.get('title', ''),
+            comment=data.get('comment', ''),
+            is_verified=True,
+            status='pending',
+        )
 
-        return reviews
+        return review
 
     @staticmethod
     def get_seller_reviews(seller_id):

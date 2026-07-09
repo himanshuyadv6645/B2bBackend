@@ -24,6 +24,23 @@ class AnalyticsEvent(models.Model):
         verbose_name = 'Analytics Event'
         verbose_name_plural = 'Analytics Events'
         ordering = ['-created_at']
+        indexes = [
+            # Per-user behaviour timelines (most-viewed, recent activity).
+            models.Index(
+                fields=['user', 'event_type', '-created_at'],
+                name='ae_user_event_created_idx',
+            ),
+            # Popularity / entity roll-ups (most-viewed product across users).
+            models.Index(
+                fields=['entity_type', 'entity_id', 'event_type'],
+                name='ae_entity_event_idx',
+            ),
+            # Abandoned cart/checkout scans over a recent time window.
+            models.Index(
+                fields=['event_type', '-created_at'],
+                name='ae_event_created_idx',
+            ),
+        ]
 
     def __str__(self):
         return f'{self.event_type} - {self.entity_type or ""} {self.entity_id or ""}'

@@ -183,3 +183,12 @@ CLOUDINARY_STORAGE = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# Firebase Cloud Messaging (push notifications).
+# Provide the service-account credentials via EITHER:
+#   FIREBASE_CREDENTIALS_JSON  - the raw service-account JSON as a string (best
+#                                for Render/hosted env vars), OR
+#   FIREBASE_CREDENTIALS_FILE  - a path to the service-account .json file.
+# If neither is set, push is silently disabled (in-app notifications still work).
+FIREBASE_CREDENTIALS_JSON = config('FIREBASE_CREDENTIALS_JSON', default='')
+FIREBASE_CREDENTIALS_FILE = config('FIREBASE_CREDENTIALS_FILE', default='')

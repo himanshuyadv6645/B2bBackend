@@ -42,6 +42,44 @@ class Notification(models.Model):
         self.save(update_fields=['is_read'])
 
 
+class DeviceToken(models.Model):
+    """An FCM registration token for one of a user's devices/browsers.
+
+    One user can have many tokens (multiple browsers/devices). A token is unique
+    globally; if it re-registers under a different user we reassign it.
+    """
+    PLATFORM_CHOICES = (
+        ('web', 'Web'),
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        'authentication.User',
+        on_delete=models.CASCADE,
+        related_name='device_tokens',
+    )
+    token = models.TextField(unique=True)
+    platform = models.CharField(max_length=10, choices=PLATFORM_CHOICES, default='web')
+    user_agent = models.CharField(max_length=500, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'device_tokens'
+        verbose_name = 'Device Token'
+        verbose_name_plural = 'Device Tokens'
+        ordering = ['-last_used_at']
+        indexes = [
+            models.Index(fields=['user', 'is_active'], name='dt_user_active_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.platform} token for {self.user_id}'
+
+
 class NotificationTemplate(models.Model):
     TYPE_CHOICES = (
         ('email', 'Email'),

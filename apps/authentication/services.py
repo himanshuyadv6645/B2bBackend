@@ -36,6 +36,9 @@ class AuthService:
         if not user.is_active:
             raise ValueError('Account is disabled')
 
+        from django.contrib.auth.models import update_last_login
+        update_last_login(None, user)
+
         tokens = AuthService.generate_tokens(user)
         return user, tokens
 

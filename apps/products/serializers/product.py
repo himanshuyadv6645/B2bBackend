@@ -91,6 +91,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
+    send_notification = serializers.BooleanField(write_only=True, required=False, default=False)
+
     class Meta:
         model = Product
         fields = [
@@ -102,4 +104,5 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'weight', 'length', 'width', 'height',
             'specifications',
             'meta_title', 'meta_description', 'meta_keywords',
+            'send_notification',
         ]

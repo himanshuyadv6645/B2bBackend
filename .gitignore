@@ -48,3 +48,7 @@ coverage.xml
 # Misc
 dj_smoke.err
 screenshots/
+
+# Firebase service account (SECRET - never commit)
+firebase-service-account.json
+*firebase-adminsdk*.json

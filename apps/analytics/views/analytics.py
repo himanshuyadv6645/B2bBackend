@@ -49,3 +49,16 @@ class PopularEntitiesView(APIView):
         limit = int(request.query_params.get('limit', 10))
         popular = AnalyticsService.get_popular_entities(entity_type, limit)
         return success_response(data=list(popular))
+
+
+class MyViewedProductsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(tags=['Analytics'], summary='Get my most-viewed products')
+    def get(self, request):
+        limit = int(request.query_params.get('limit', 10))
+        days = int(request.query_params.get('days', 90))
+        data = AnalyticsService.get_user_most_viewed_products(
+            request.user, limit=limit, days=days,
+        )
+        return success_response(data=list(data))

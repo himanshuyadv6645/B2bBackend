@@ -166,12 +166,22 @@ class ProductCreateView(generics.CreateAPIView):
         return super().post(request, *args, **kwargs)
 
     def perform_create(self, serializer):
+        send_notification = serializer.validated_data.pop('send_notification', False)
+        
         if self.request.user.role == 'seller':
             from apps.sellers.services import SellerService
             profile = SellerService.get_profile(self.request.user)
-            serializer.save(seller=profile)
+            product = serializer.save(seller=profile)
         else:
-            serializer.save()
+            product = serializer.save()
+            
+        if send_notification:
+            from apps.notifications.services import PushService
+            PushService.broadcast(
+                title="New Product Alert! 🚀",
+                body=f"Check out our new product: {product.name}",
+                data={"action_url": f"/product/{product.slug}"}
+            )
 
 
 class ProductUpdateView(generics.RetrieveUpdateDestroyAPIView):
